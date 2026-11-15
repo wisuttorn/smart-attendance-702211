@@ -11,20 +11,21 @@ const page = new URL(location.pathname, location.origin);
 const savedDeviceKey = "sa702211_device";
 let selectedCourse;
 let selectedSection;
+const issuedCodesBySection = new Map();
 
 const errors = {
   INVALID_RESET: "รหัสนักศึกษาหรือรหัสรีเซ็ตไม่ถูกต้อง หรือรหัสหมดอายุแล้ว",
   STUDENT_ALREADY_EXISTS: "รหัสนักศึกษานี้มีอยู่ในรายวิชาแล้ว",
   FORBIDDEN: "บัญชีนี้ไม่มีสิทธิ์เข้าถึงข้อมูล",
   INVALID_ACTIVATION: "รหัสนักศึกษาหรือ Activation Code ไม่ถูกต้องหรือหมดอายุ",
-  INVALID_CHECKIN: "รหัสนักศึกษา, PIN หรือกลุ่มเรียนไม่ถูกต้อง",
+  INVALID_CHECKIN: "รหัสนักศึกษา, PIN หรือตอนเรียนไม่ถูกต้อง",
   INVALID_ROSTER: "ไฟล์ต้องมีรายชื่อ 1–500 แถว",
   INVALID_ROSTER_ROW: "ตรวจสอบรหัสนักศึกษาและชื่อ–นามสกุลในไฟล์",
   NOT_ELIGIBLE: "บัญชีเปิดใช้งานแล้ว หรือไม่สามารถออกรหัสได้",
   QR_EXPIRED: "QR หมดอายุ กรุณาสแกน QR ล่าสุดบนหน้าจออาจารย์",
   SCAN_AGAIN: "กรุณาสแกน QR ล่าสุดแล้วลองอีกครั้ง",
   SESSION_CLOSED: "คาบนี้ปิดเช็กชื่อแล้ว",
-  STUDENT_IN_ANOTHER_SECTION: "มีรหัสนักศึกษาที่อยู่ในกลุ่มเรียนอื่น",
+  STUDENT_IN_ANOTHER_SECTION: "มีรหัสนักศึกษาที่อยู่ในตอนเรียนอื่น",
   TRY_AGAIN: "มีผู้ใช้งานจำนวนมาก กรุณาสแกน QR รอบถัดไป",
   TRY_AGAIN_LATER: "ลอง PIN หลายครั้งเกินไป กรุณารอ 5 นาที",
 };
@@ -116,6 +117,8 @@ async function changeSection(sections) {
   $("issue-reset").disabled = true;
   $("teacher-reset-result").hidden = true;
   $("reset-code").textContent = "";
+  $("issue-activation-section").disabled = !selectedSection;
+  renderActivationCodes(selectedSection);
   if (selectedSection) await loadRoster(selectedSection);
 }
 async function showTeacher() {
@@ -156,16 +159,29 @@ bind($("teacher-reset-form"), "submit", async () => {
   show("teacher-reset-result");
   status("ส่งโค้ดรีเซ็ตและลิงก์ให้นักศึกษาที่เลือกโดยตรง");
 });
-bind($("issue-activation-batch"), "click", async () => {
-  if (!selectedCourse || !window.confirm("ออกโค้ดพร้อมกันทุกกลุ่ม? โค้ดเดิมที่ยังไม่ได้ใช้จะใช้ไม่ได้")) return;
-  const rows = await rpc("sa702211_issue_activation_batch", { p_course: selectedCourse.id });
-  $("activation-rows").replaceChildren(...rows.map(({ section, student_code, full_name, code }) => {
+function renderActivationCodes(section) {
+  const rows = issuedCodesBySection.get(section?.id) ?? [];
+  $("activation-rows").replaceChildren(...rows.map(({ student_code, full_name, code }) => {
     const row = document.createElement("tr");
-    for (const value of [section, student_code, full_name, code]) row.insertCell().textContent = value;
+    for (const value of [section.name, student_code, full_name, code]) row.insertCell().textContent = value;
     return row;
   }));
   $("activation-results").hidden = rows.length === 0;
-  status(rows.length ? `ออก Activation Code แล้ว ${rows.length} คน ส่งโค้ดแต่ละรายการให้เจ้าของโดยตรง` : "นักศึกษาทุกคนเปิดใช้งานแล้ว");
+}
+bind($("issue-activation-section"), "click", async () => {
+  const section = selectedSection;
+  if (!section || !window.confirm(`ออกโค้ดสำหรับตอน ${section.name}? โค้ดเดิมที่ยังไม่ได้ใช้ในตอนนี้จะใช้ไม่ได้`)) return;
+  $("section").disabled = true;
+  try {
+    const rows = await rpc("sa702211_issue_activation_section", { p_section: section.id });
+    issuedCodesBySection.set(section.id, rows);
+    renderActivationCodes(section);
+    status(rows.length
+      ? `ตอน ${section.name} ออก Activation Code แล้ว ${rows.length} คน ส่งโค้ดแต่ละรายการให้เจ้าของโดยตรง`
+      : `ตอน ${section.name} ไม่มีนักศึกษาที่ต้องออก Activation Code`);
+  } finally {
+    $("section").disabled = false;
+  }
 });
 bind($("start"), "click", async () => {
   if (!selectedSection) return;
@@ -195,11 +211,11 @@ bind($("add-student-form"), "submit", async (event) => {
     p_full_name: full_name,
   });
   form.reset();
-  status(`เพิ่มนักศึกษาในกลุ่ม ${section.name} แล้ว`);
+  status(`เพิ่มนักศึกษาในตอน ${section.name} แล้ว`);
   try {
     await loadRoster(section);
   } catch {
-    status(`บันทึกนักศึกษาในกลุ่ม ${section.name} แล้ว กรุณารีเฟรชเพื่อดูรายชื่อ`);
+    status(`บันทึกนักศึกษาในตอน ${section.name} แล้ว กรุณารีเฟรชเพื่อดูรายชื่อ`);
   }
 });
 bind($("import-form"), "submit", async (event) => {

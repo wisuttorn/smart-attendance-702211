@@ -31,7 +31,7 @@
       <div class="card teacher-controls">
         <h1>จัดการเช็กชื่อ</h1>
         <div class="actions">
-          <label>กลุ่มเรียน <select id="section"></select></label>
+          <label>ตอนเรียน <select id="section"></select></label>
           <button id="start" type="button">เริ่มเช็กชื่อ</button>
           <button id="open-projector" type="button" hidden>เปิดจอโปรเจกเตอร์</button>
           <button id="end" class="secondary" type="button" hidden>ปิดเช็กชื่อ</button>
@@ -41,13 +41,13 @@
       <div id="teacher-accounts" class="card" hidden>
         <h2>บัญชีนักศึกษา</h2>
         <details>
-          <summary>ออก Activation Code ทั้งรายวิชา</summary>
-          <p>ออกโค้ดทุกกลุ่มพร้อมกันสำหรับนักศึกษาที่ยังไม่เปิดใช้งาน โค้ดเดิมที่ยังไม่ได้ใช้จะถูกแทนที่</p>
+          <summary>ออก Activation Code ตามตอน</summary>
+          <p>ออกโค้ดให้เฉพาะนักศึกษาที่ยังไม่เปิดใช้งานในตอนที่เลือก โค้ดเดิมที่ยังไม่ได้ใช้ในตอนนี้จะถูกแทนที่</p>
           <p><a id="activation-link">ลิงก์เปิดใช้งานบัญชีนักศึกษา</a></p>
-          <button id="issue-activation-batch" type="button">ออก Activation Code ทุกกลุ่ม</button>
+          <button id="issue-activation-section" type="button" disabled>ออก Activation Code สำหรับตอนที่เลือก</button>
           <div id="activation-results" class="table-wrap" hidden>
             <table>
-              <thead><tr><th>กลุ่ม</th><th>รหัสนักศึกษา</th><th>ชื่อ–นามสกุล</th><th>Activation Code</th></tr></thead>
+              <thead><tr><th>ตอน</th><th>รหัสนักศึกษา</th><th>ชื่อ–นามสกุล</th><th>Activation Code</th></tr></thead>
               <tbody id="activation-rows"></tbody>
             </table>
           </div>
@@ -55,7 +55,7 @@
         <details>
           <summary>ออกโค้ดใหม่เมื่อนักศึกษาลืม PIN</summary>
           <form id="teacher-reset-form" class="actions">
-            <label>นักศึกษาที่เปิดใช้งานแล้วในกลุ่มที่เลือก
+            <label>นักศึกษาที่เปิดใช้งานแล้วในตอนที่เลือก
               <select id="reset-student" name="student" required><option value="">เลือกนักศึกษา</option></select>
             </label>
             <button id="issue-reset" type="submit" disabled>ออกโค้ดรีเซ็ต PIN</button>
@@ -132,6 +132,6 @@
       <p id="forgot-pin" hidden><a id="forgot-pin-link">ลืม PIN</a></p>
     </section>
   </main>
-  <script type="module" src="./app.js?v=account-tools"></script>
+  <script type="module" src="./app.js?v=activation-section"></script>
 </body>
 </html>
