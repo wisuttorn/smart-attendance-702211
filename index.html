@@ -82,6 +82,17 @@
         <button>เปิดใช้งาน</button>
       </form>
     </section>
+    <section id="reset-pin" class="card narrow" hidden>
+      <h1>ตั้ง PIN ใหม่</h1>
+      <p>ขอรหัสรีเซ็ตจากอาจารย์ประจำวิชา รหัสใช้ได้ครั้งเดียวภายใน 1 ชั่วโมง</p>
+      <form id="reset-pin-form">
+        <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
+        <label>รหัสรีเซ็ต <input name="reset_code" minlength="16" maxlength="16" autocomplete="one-time-code" required></label>
+        <label>PIN ใหม่ 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
+        <label>ยืนยัน PIN ใหม่ <input name="confirm_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
+        <button>บันทึก PIN ใหม่</button>
+      </form>
+    </section>
     <section id="checkin" class="card narrow" hidden>
       <h1>เช็กชื่อเข้าเรียน</h1>
       <form id="checkin-form" hidden>
@@ -90,8 +101,9 @@
         <label class="checkbox"><input name="remember" type="checkbox"> จดจำอุปกรณ์นี้ 30 วัน</label>
         <button>ยืนยันเช็กชื่อ</button>
       </form>
+      <p id="forgot-pin" hidden><a id="forgot-pin-link">ลืม PIN</a></p>
     </section>
   </main>
-  <script type="module" src="./app.js?v=roster-add"></script>
+  <script type="module" src="./app.js?v=pin-reset"></script>
 </body>
 </html>

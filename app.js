@@ -13,6 +13,7 @@ let selectedCourse;
 let selectedSection;
 
 const errors = {
+  INVALID_RESET: "รหัสนักศึกษาหรือรหัสรีเซ็ตไม่ถูกต้อง หรือรหัสหมดอายุแล้ว",
   STUDENT_ALREADY_EXISTS: "รหัสนักศึกษานี้มีอยู่ในรายวิชาแล้ว",
   FORBIDDEN: "บัญชีนี้ไม่มีสิทธิ์เข้าถึงข้อมูล",
   INVALID_ACTIVATION: "รหัสนักศึกษาหรือ Activation Code ไม่ถูกต้องหรือหมดอายุ",
@@ -97,7 +98,23 @@ async function loadRoster(section) {
     row.insertCell().textContent = studentRow.full_name;
     const cell = row.insertCell();
     if (studentRow.activated) {
-      cell.textContent = "เปิดใช้งานแล้ว";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = "ออกโค้ดรีเซ็ต PIN";
+      cell.append(button);
+      bind(button, "click", async () => {
+        const result = await rpc("sa702211_issue_pin_reset", { p_student: studentRow.id });
+        const code = document.createElement("code");
+        code.textContent = result.code;
+        const link = document.createElement("a");
+        link.href = route({ reset: selectedCourse.id });
+        link.textContent = "ลิงก์ตั้ง PIN ใหม่";
+        const details = document.createElement("div");
+        details.append(code, document.createElement("br"), link);
+        cell.replaceChildren(details);
+        status("ออกรหัสรีเซ็ตแล้ว กรุณาส่งรหัสและลิงก์ให้นักศึกษาคนนี้โดยตรง");
+      });
     } else {
       const button = document.createElement("button");
       button.type = "button";
@@ -282,6 +299,23 @@ bind($("activate-form"), "submit", async (event) => {
   $("activate-form").hidden = true;
   status("เปิดใช้งานบัญชีแล้ว สแกน QR จากอาจารย์เมื่อเริ่มเช็กชื่อ");
 });
+bind($("reset-pin-form"), "submit", async (event) => {
+  const form = event.currentTarget;
+  const { student_code, reset_code, pin, confirm_pin } = formData(form);
+  const courseId = query.get("reset");
+  if (pin !== confirm_pin) {
+    status("PIN ใหม่ทั้งสองช่องต้องตรงกัน");
+    return;
+  }
+  await rpc("sa702211_reset_pin", { p_data: { student_code, reset_code, pin, course_id: courseId } });
+  const device = getDevice();
+  if (device?.course === courseId && device.code === student_code.trim()) {
+    try { localStorage.removeItem(savedDeviceKey); } catch { /* Device access is already revoked on the server. */ }
+  }
+  form.reset();
+  form.hidden = true;
+  status("ตั้ง PIN ใหม่แล้ว สแกน QR แล้วใช้ PIN ใหม่เพื่อเช็กชื่อ");
+});
 function getDevice() {
   try { return JSON.parse(localStorage.getItem(savedDeviceKey)); }
   catch { return null; }
@@ -289,6 +323,8 @@ function getDevice() {
 async function showCheckin(token) {
   show("checkin");
   const ticket = await student("redeem", { token });
+  $("forgot-pin-link").href = route({ reset: ticket.course_id });
+  show("forgot-pin");
   const form = $("checkin-form");
   const device = getDevice();
   if (device?.course === ticket.course_id) {
@@ -313,6 +349,7 @@ async function showCheckin(token) {
       } catch { /* The attendance record is already saved. */ }
     }
     form.hidden = true;
+    $("forgot-pin").hidden = true;
     status(result.already_checked_in ? "คุณเช็กชื่อคาบนี้แล้ว" : "เช็กชื่อสำเร็จ");
   });
 }
@@ -321,6 +358,8 @@ async function main() {
     const token = fragment.get("checkin");
     history.replaceState(null, "", page);
     await showCheckin(token);
+  } else if (query.has("reset")) {
+    show("reset-pin");
   } else if (query.has("activate")) {
     show("activate");
   } else if (query.has("teacher") || query.has("projector")) {
