@@ -35,6 +35,7 @@
           <button id="start" type="button">เริ่มเช็กชื่อ</button>
           <button id="open-projector" type="button" hidden>เปิดจอโปรเจกเตอร์</button>
           <button id="end" class="secondary" type="button" hidden>ปิดเช็กชื่อ</button>
+          <a id="report-link" class="button" href="?teacher&report">รายงานเช็กชื่อ</a>
           <button id="logout" class="secondary" type="button">ออกจากระบบ</button>
         </div>
       </div>
@@ -42,15 +43,14 @@
         <h2>บัญชีนักศึกษา</h2>
         <details>
           <summary>ออก Activation Code ตามตอน</summary>
-          <p>ออกโค้ดให้เฉพาะนักศึกษาที่ยังไม่เปิดใช้งานในตอนที่เลือก โค้ดเดิมที่ยังไม่ได้ใช้ในตอนนี้จะถูกแทนที่</p>
+          <p>นักศึกษาที่ยังไม่เปิดใช้งานในตอนที่เลือกใช้เลขชุดเดียวกันได้ โค้ดหมดอายุใน 7 วัน การออกโค้ดใหม่จะแทนที่โค้ดเดิมของตอนนี้</p>
           <p><a id="activation-link">ลิงก์เปิดใช้งานบัญชีนักศึกษา</a></p>
           <button id="issue-activation-section" type="button" disabled>ออก Activation Code สำหรับตอนที่เลือก</button>
-          <div id="activation-results" class="table-wrap" hidden>
-            <table>
-              <thead><tr><th>ตอน</th><th>รหัสนักศึกษา</th><th>ชื่อ–นามสกุล</th><th>Activation Code</th></tr></thead>
-              <tbody id="activation-rows"></tbody>
-            </table>
-          </div>
+          <p id="activation-results" hidden>
+            ตอน <strong id="activation-section-name"></strong><br>
+            Activation Code <code id="section-activation-code"></code><br>
+            หมดอายุ <span id="section-activation-expiry"></span>
+          </p>
         </details>
         <details>
           <summary>ออกโค้ดใหม่เมื่อนักศึกษาลืม PIN</summary>
@@ -90,6 +90,23 @@
         </div>
       </div>
     </section>
+    <section id="attendance-report" class="card" hidden>
+      <h1>รายงานเช็กชื่อ</h1>
+      <div class="actions">
+        <label>ตอนเรียน <select id="report-section"></select></label>
+        <button id="refresh-report" type="button">โหลดรายงานใหม่</button>
+        <a href="?teacher">กลับหน้าหลักอาจารย์</a>
+      </div>
+      <p id="report-message" role="status"></p>
+      <div id="report-table" class="table-wrap" hidden>
+        <p>✓ เช็กชื่อสำเร็จ · — ไม่มีรายการเช็กชื่อ</p>
+        <table>
+          <caption>ผลเช็กชื่อของนักศึกษาที่เคยเช็กชื่อสำเร็จ</caption>
+          <thead><tr id="report-head"></tr></thead>
+          <tbody id="report-rows"></tbody>
+        </table>
+      </div>
+    </section>
     <section id="projector" class="projector" hidden>
       <div class="card qr-panel">
         <h1>สแกน QR เพื่อเช็กชื่อ</h1>
@@ -105,7 +122,7 @@
       <h1>เปิดใช้งานบัญชีนักศึกษา</h1>
       <form id="activate-form">
         <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
-        <label>Activation Code <input name="activation_code" minlength="16" maxlength="16" required></label>
+        <label>Activation Code ที่อาจารย์ให้ <input name="activation_code" minlength="16" maxlength="16" required></label>
         <label>กำหนด PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
         <button>เปิดใช้งาน</button>
       </form>
@@ -132,6 +149,6 @@
       <p id="forgot-pin" hidden><a id="forgot-pin-link">ลืม PIN</a></p>
     </section>
   </main>
-  <script type="module" src="./app.js?v=activation-section"></script>
+  <script type="module" src="./app.js?v=section-report"></script>
 </body>
 </html>

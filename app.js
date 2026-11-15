@@ -12,6 +12,7 @@ const savedDeviceKey = "sa702211_device";
 let selectedCourse;
 let selectedSection;
 const issuedCodesBySection = new Map();
+const thaiDateTime = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
 
 const errors = {
   INVALID_RESET: "รหัสนักศึกษาหรือรหัสรีเซ็ตไม่ถูกต้อง หรือรหัสหมดอายุแล้ว",
@@ -118,6 +119,7 @@ async function changeSection(sections) {
   $("teacher-reset-result").hidden = true;
   $("reset-code").textContent = "";
   $("issue-activation-section").disabled = !selectedSection;
+  $("report-link").href = route(selectedSection ? { teacher: "", report: "", section: selectedSection.id } : { teacher: "", report: "" });
   renderActivationCodes(selectedSection);
   if (selectedSection) await loadRoster(selectedSection);
 }
@@ -160,25 +162,21 @@ bind($("teacher-reset-form"), "submit", async () => {
   status("ส่งโค้ดรีเซ็ตและลิงก์ให้นักศึกษาที่เลือกโดยตรง");
 });
 function renderActivationCodes(section) {
-  const rows = issuedCodesBySection.get(section?.id) ?? [];
-  $("activation-rows").replaceChildren(...rows.map(({ student_code, full_name, code }) => {
-    const row = document.createElement("tr");
-    for (const value of [section.name, student_code, full_name, code]) row.insertCell().textContent = value;
-    return row;
-  }));
-  $("activation-results").hidden = rows.length === 0;
+  const result = issuedCodesBySection.get(section?.id);
+  $("activation-results").hidden = !result?.code;
+  $("activation-section-name").textContent = result?.code ? section.name : "";
+  $("section-activation-code").textContent = result?.code ?? "";
+  $("section-activation-expiry").textContent = result?.expires_at ? thaiDateTime.format(new Date(result.expires_at)) : "";
 }
 bind($("issue-activation-section"), "click", async () => {
   const section = selectedSection;
-  if (!section || !window.confirm(`ออกโค้ดสำหรับตอน ${section.name}? โค้ดเดิมที่ยังไม่ได้ใช้ในตอนนี้จะใช้ไม่ได้`)) return;
+  if (!section || !window.confirm(`ออก Activation Code กลางสำหรับตอน ${section.name}? โค้ดเดิมที่ยังไม่ได้ใช้ในตอนนี้จะใช้ไม่ได้`)) return;
   $("section").disabled = true;
   try {
-    const rows = await rpc("sa702211_issue_activation_section", { p_section: section.id });
-    issuedCodesBySection.set(section.id, rows);
+    const result = await rpc("sa702211_section_activation_code", { p_section: section.id });
+    issuedCodesBySection.set(section.id, result);
     renderActivationCodes(section);
-    status(rows.length
-      ? `ตอน ${section.name} ออก Activation Code แล้ว ${rows.length} คน ส่งโค้ดแต่ละรายการให้เจ้าของโดยตรง`
-      : `ตอน ${section.name} ไม่มีนักศึกษาที่ต้องออก Activation Code`);
+    status(result.code ? `ออก Activation Code กลางสำหรับตอน ${section.name} แล้ว` : `ตอน ${section.name} ไม่มีนักศึกษาที่ต้องออก Activation Code`);
   } finally {
     $("section").disabled = false;
   }
@@ -383,6 +381,73 @@ async function showCheckin(token) {
     status(result.already_checked_in ? "คุณเช็กชื่อคาบนี้แล้ว" : "เช็กชื่อสำเร็จ");
   });
 }
+async function showAttendanceReport() {
+  show("attendance-report");
+  const courses = await teacher("courses");
+  const sections = courses.find(({ code }) => code === "702211")?.sections ?? [];
+  const picker = $("report-section");
+  picker.replaceChildren(...sections.map(({ id, name }) => new Option(name, id)));
+  const requested = query.get("section");
+  if (sections.some(({ id }) => id === requested)) picker.value = requested;
+  if (!sections.length) {
+    picker.disabled = true;
+    $("refresh-report").disabled = true;
+    $("report-message").textContent = "ยังไม่มีตอนเรียนสำหรับบัญชีนี้";
+    return;
+  }
+  let request = 0;
+  async function load() {
+    const current = ++request;
+    $("report-table").hidden = true;
+    $("report-head").replaceChildren();
+    $("report-rows").replaceChildren();
+    $("report-message").textContent = "กำลังโหลดรายงาน…";
+    try {
+      const { sessions, students } = await rpc("sa702211_section_report", { p_section: picker.value });
+      if (request !== current) return;
+      $("report-message").textContent = !sessions.length ? "ตอนนี้ยังไม่มีคาบเช็กชื่อ"
+        : !students.length ? "ยังไม่มีนักศึกษาที่เช็กชื่อสำเร็จ" : "";
+      if (!sessions.length) return;
+      function addHeading(label, date) {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = label;
+        if (date) {
+          const time = document.createElement("time");
+          time.dateTime = date;
+          time.textContent = thaiDateTime.format(new Date(date));
+          th.append(document.createElement("br"), time);
+        }
+        $("report-head").append(th);
+      }
+      addHeading("รหัสนักศึกษา");
+      addHeading("ชื่อ–นามสกุล");
+      for (const session of sessions) addHeading(`ครั้งที่ ${session.number}`, session.started_at);
+      $("report-rows").replaceChildren(...students.map(({ student_code, full_name, checked }) => {
+        const row = document.createElement("tr");
+        row.insertCell().textContent = student_code;
+        row.insertCell().textContent = full_name;
+        const attended = new Set(checked);
+        for (const session of sessions) {
+          const cell = row.insertCell();
+          const present = attended.has(session.number);
+          cell.textContent = present ? "✓" : "—";
+          cell.setAttribute("aria-label", present ? "เช็กชื่อสำเร็จ" : "ไม่มีรายการเช็กชื่อ");
+        }
+        return row;
+      }));
+      show("report-table");
+    } catch (error) {
+      if (request !== current) return;
+      $("report-message").textContent = "";
+      report(error);
+    }
+  }
+  picker.addEventListener("change", () => { status(); void load(); });
+  bind($("refresh-report"), "click", load);
+  await load();
+}
+
 async function main() {
   if (fragment.has("checkin")) {
     const token = fragment.get("checkin");
@@ -397,6 +462,7 @@ async function main() {
     if (error) throw error;
     if (!data.session) show("login");
     else if (query.has("projector")) await showProjector(query.get("projector"));
+    else if (query.has("report")) await showAttendanceReport();
     else await showTeacher();
   } else {
     show("home");
