@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>Smart Attendance · 702211</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=teacher-menu">
 </head>
 <body>
   <header>
@@ -13,10 +13,17 @@
     <span>702211 Business Finance 1</span>
   </header>
   <main>
+    <nav id="teacher-nav" class="teacher-nav" aria-label="เมนูผู้สอน" hidden>
+      <a id="nav-attendance" href="?teacher">เช็คชื่อ</a>
+      <a id="nav-accounts" href="?teacher&view=accounts">บัญชีนักศึกษา</a>
+      <a id="nav-students" href="?teacher&view=students">เพิ่มนักศึกษา</a>
+      <a id="nav-report" href="?teacher&report">รายงานเช็คชื่อ</a>
+      <button id="logout" class="secondary" type="button">ออกจากระบบ</button>
+    </nav>
     <p id="status" role="status" aria-live="polite"></p>
     <section id="home" hidden class="card narrow">
-      <h1>ระบบเช็กชื่อ</h1>
-      <p>นักศึกษาสแกน QR จากหน้าจออาจารย์เพื่อเช็กชื่อ หรือเปิดลิงก์ลงทะเบียนที่อาจารย์ส่งให้</p>
+      <h1>ระบบเช็คชื่อ</h1>
+      <p>นักศึกษาสแกน QR จากหน้าจออาจารย์เพื่อเช็คชื่อ หรือเปิดลิงก์ลงทะเบียนที่อาจารย์ส่งให้</p>
       <a class="button" href="?teacher">เข้าสู่ระบบอาจารย์</a>
     </section>
     <section id="login" hidden class="card narrow">
@@ -29,18 +36,17 @@
     </section>
     <section id="teacher" hidden>
       <div class="card teacher-controls">
-        <h1>จัดการเช็กชื่อ</h1>
+        <h1 id="teacher-heading">เช็คชื่อ</h1>
         <div class="actions">
           <label>ตอนเรียน <select id="section"></select></label>
-          <button id="start" type="button">เริ่มเช็กชื่อ</button>
-          <button id="open-projector" type="button" hidden>เปิดจอโปรเจกเตอร์</button>
-          <button id="end" class="secondary" type="button" hidden>ปิดเช็กชื่อ</button>
-          <a id="report-link" class="button" href="?teacher&report">รายงานเช็กชื่อ</a>
-          <button id="logout" class="secondary" type="button">ออกจากระบบ</button>
+          <div id="session-actions" class="actions">
+            <button id="start" type="button">เริ่มเช็คชื่อ</button>
+            <button id="open-projector" type="button" hidden>เปิดจอโปรเจกเตอร์</button>
+            <button id="end" class="secondary" type="button" hidden>ปิดเช็คชื่อ</button>
+          </div>
         </div>
       </div>
       <div id="teacher-accounts" class="card" hidden>
-        <h2>บัญชีนักศึกษา</h2>
         <details>
           <summary>ออก Activation Code ตามตอน</summary>
           <p>นักศึกษาที่ยังไม่เปิดใช้งานในตอนที่เลือกใช้เลขชุดเดียวกันได้ โค้ดหมดอายุใน 7 วัน การออกโค้ดใหม่จะแทนที่โค้ดเดิมของตอนนี้</p>
@@ -67,8 +73,7 @@
           </p>
         </details>
       </div>
-      <div id="roster" class="card" hidden>
-        <h2>รายชื่อนักศึกษา</h2>
+      <div id="student-tools" class="card" hidden>
         <details>
           <summary>เพิ่มนักศึกษาทีละคน</summary>
           <form id="add-student-form" class="actions">
@@ -82,26 +87,19 @@
           <label>ไฟล์รายชื่อ <input type="file" name="file" accept=".csv,text/csv" required></label>
           <button>อัปโหลดรายชื่อ</button>
         </form>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>รหัสนักศึกษา</th><th>ชื่อ–นามสกุล</th><th>เปิดใช้งานบัญชี</th></tr></thead>
-            <tbody id="roster-rows"></tbody>
-          </table>
-        </div>
       </div>
     </section>
     <section id="attendance-report" class="card" hidden>
-      <h1>รายงานเช็กชื่อ</h1>
+      <h1>รายงานเช็คชื่อ</h1>
       <div class="actions">
         <label>ตอนเรียน <select id="report-section"></select></label>
         <button id="refresh-report" type="button">โหลดรายงานใหม่</button>
-        <a href="?teacher">กลับหน้าหลักอาจารย์</a>
       </div>
       <p id="report-message" role="status"></p>
       <div id="report-table" class="table-wrap" hidden>
-        <p>✓ เช็กชื่อสำเร็จ · — ไม่มีรายการเช็กชื่อ</p>
+        <p>✓ เช็คชื่อสำเร็จ · — ไม่มีรายการเช็คชื่อ</p>
         <table>
-          <caption>ผลเช็กชื่อของนักศึกษาที่เคยเช็กชื่อสำเร็จ</caption>
+          <caption>ผลเช็คชื่อของนักศึกษาที่เคยเช็คชื่อสำเร็จ</caption>
           <thead><tr id="report-head"></tr></thead>
           <tbody id="report-rows"></tbody>
         </table>
@@ -109,12 +107,12 @@
     </section>
     <section id="projector" class="projector" hidden>
       <div class="card qr-panel">
-        <h1>สแกน QR เพื่อเช็กชื่อ</h1>
-        <canvas id="qr" aria-label="QR สำหรับเช็กชื่อ" role="img" hidden></canvas>
+        <h1>สแกน QR เพื่อเช็คชื่อ</h1>
+        <canvas id="qr" aria-label="QR สำหรับเช็คชื่อ" role="img" hidden></canvas>
         <p id="qr-state" aria-live="off"></p>
       </div>
       <div class="card">
-        <h2>เช็กชื่อสำเร็จ <span id="count">0</span></h2>
+        <h2>เช็คชื่อสำเร็จ <span id="count">0</span></h2>
         <ul id="success-list"></ul>
       </div>
     </section>
@@ -139,16 +137,17 @@
       </form>
     </section>
     <section id="checkin" class="card narrow" hidden>
-      <h1>เช็กชื่อเข้าเรียน</h1>
+      <h1>เช็คชื่อเข้าเรียน</h1>
       <form id="checkin-form" hidden>
         <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
         <label>PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="current-password"></label>
         <label class="checkbox"><input name="remember" type="checkbox"> จดจำอุปกรณ์นี้ 30 วัน</label>
-        <button>ยืนยันเช็กชื่อ</button>
+        <button>ยืนยันเช็คชื่อ</button>
       </form>
       <p id="forgot-pin" hidden><a id="forgot-pin-link">ลืม PIN</a></p>
     </section>
   </main>
-  <script type="module" src="./app.js?v=section-report"></script>
+  <footer class="site-credit">โดย Dr. Wisuttorn Jitaree</footer>
+  <script type="module" src="./app.js?v=teacher-menu"></script>
 </body>
 </html>

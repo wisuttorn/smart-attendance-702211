@@ -36,3 +36,12 @@ canvas { display: block; width: min(100%, 24rem) !important; height: auto !impor
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: .55rem; border-bottom: 1px solid #e3edeb; text-align: left; }
 @media (max-width: 42rem) { .projector { grid-template-columns: 1fr; } }
+
+.teacher-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-bottom: 1rem; padding: .5rem; background: white; border: 1px solid #d4e3df; border-radius: .75rem; }
+.teacher-nav a { padding: .55rem .75rem; border-radius: .5rem; text-decoration: none; font-weight: 650; }
+.teacher-nav a:hover { background: #eef6f3; }
+.teacher-nav a[aria-current="page"] { background: #075b50; color: white; }
+.teacher-nav a:focus-visible, .teacher-nav button:focus-visible { outline: 3px solid #168675; outline-offset: 2px; }
+.teacher-nav button { margin-inline-start: auto; }
+.site-credit { margin: 0 auto; padding: .75rem 1rem 1.5rem; text-align: center; color: #34514f; font-size: .875rem; }
+@media (max-width: 42rem) { .teacher-nav button { margin-inline-start: 0; } }

@@ -11,6 +11,8 @@ const page = new URL(location.pathname, location.origin);
 const savedDeviceKey = "sa702211_device";
 let selectedCourse;
 let selectedSection;
+const teacherView = ["accounts", "students"].includes(query.get("view")) ? query.get("view") : "attendance";
+const teacherTitles = { attendance: "เช็คชื่อ", accounts: "บัญชีนักศึกษา", students: "เพิ่มนักศึกษา" };
 const issuedCodesBySection = new Map();
 const thaiDateTime = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
 
@@ -25,7 +27,7 @@ const errors = {
   NOT_ELIGIBLE: "บัญชีเปิดใช้งานแล้ว หรือไม่สามารถออกรหัสได้",
   QR_EXPIRED: "QR หมดอายุ กรุณาสแกน QR ล่าสุดบนหน้าจออาจารย์",
   SCAN_AGAIN: "กรุณาสแกน QR ล่าสุดแล้วลองอีกครั้ง",
-  SESSION_CLOSED: "คาบนี้ปิดเช็กชื่อแล้ว",
+  SESSION_CLOSED: "คาบนี้ปิดเช็คชื่อแล้ว",
   STUDENT_IN_ANOTHER_SECTION: "มีรหัสนักศึกษาที่อยู่ในตอนเรียนอื่น",
   TRY_AGAIN: "มีผู้ใช้งานจำนวนมาก กรุณาสแกน QR รอบถัดไป",
   TRY_AGAIN_LATER: "ลอง PIN หลายครั้งเกินไป กรุณารอ 5 นาที",
@@ -92,53 +94,66 @@ function updateSessionControls() {
   $("end").hidden = !session;
   $("open-projector").hidden = !session;
 }
-async function loadRoster(section) {
+function updateTeacherNav(active, sectionId) {
+  const routes = {
+    attendance: {},
+    accounts: { view: "accounts" },
+    students: { view: "students" },
+    report: { report: "" },
+  };
+  for (const [name, params] of Object.entries(routes)) {
+    const link = $("nav-" + name);
+    link.href = route({ teacher: "", ...params, ...(sectionId ? { section: sectionId } : {}) });
+    if (name === active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  }
+  show("teacher-nav");
+}
+
+async function loadResetOptions(section) {
   const rows = await teacher("roster", section.id);
   if (section !== selectedSection) return;
-  const prior = $("reset-student").value;
-  $("reset-student").replaceChildren(new Option("เลือกนักศึกษา", ""), ...rows
-    .filter(({ activated }) => activated)
-    .map(({ id, student_code, full_name }) => new Option(`${student_code} · ${full_name}`, id)));
-  $("reset-student").value = [...$("reset-student").options].some(({ value }) => value === prior) ? prior : "";
-  $("issue-reset").disabled = !$("reset-student").value;
-  $("roster-rows").replaceChildren(...rows.map((studentRow) => {
-    const row = document.createElement("tr");
-    row.insertCell().textContent = studentRow.student_code;
-    row.insertCell().textContent = studentRow.full_name;
-    row.insertCell().textContent = studentRow.activated ? "เปิดใช้งานแล้ว" : "ยังไม่เปิดใช้งาน";
-    return row;
-  }));
+  const options = rows.filter(({ activated }) => activated)
+    .map(({ id, student_code, full_name }) => new Option(student_code + " · " + full_name, id));
+  $("reset-student").replaceChildren(new Option("เลือกนักศึกษา", ""), ...options);
 }
+
 async function changeSection(sections) {
   selectedSection = sections.find(({ id }) => id === $("section").value);
+  updateTeacherNav(teacherView, selectedSection?.id);
   updateSessionControls();
-  $("roster").hidden = !selectedSection;
-  $("roster-rows").replaceChildren();
+  $("student-tools").hidden = teacherView !== "students" || !selectedSection;
+  $("teacher-accounts").hidden = teacherView !== "accounts" || !selectedSection;
+  if (teacherView !== "accounts" || !selectedSection) return;
   $("reset-student").replaceChildren(new Option("เลือกนักศึกษา", ""));
   $("issue-reset").disabled = true;
   $("teacher-reset-result").hidden = true;
   $("reset-code").textContent = "";
-  $("issue-activation-section").disabled = !selectedSection;
-  $("report-link").href = route(selectedSection ? { teacher: "", report: "", section: selectedSection.id } : { teacher: "", report: "" });
+  $("issue-activation-section").disabled = false;
   renderActivationCodes(selectedSection);
-  if (selectedSection) await loadRoster(selectedSection);
+  await loadResetOptions(selectedSection);
 }
+
 async function showTeacher() {
   show("teacher");
+  updateTeacherNav(teacherView);
+  $("teacher-heading").textContent = teacherTitles[teacherView];
+  $("session-actions").hidden = teacherView !== "attendance";
   updateSessionControls();
   const courses = await teacher("courses");
   selectedCourse = courses.find(({ code }) => code === "702211");
-  if (!selectedCourse) {
+  const sections = selectedCourse?.sections ?? [];
+  if (!sections.length) {
     $("section").disabled = true;
-    status("ยังไม่ได้กำหนดรายวิชา 702211 ให้บัญชีนี้");
+    status("ยังไม่มีตอนเรียนสำหรับบัญชีนี้");
     return;
   }
-  const sections = selectedCourse.sections;
-  $("section").replaceChildren(...sections.map((section) => new Option(section.name, section.id)));
+  $("section").replaceChildren(...sections.map(({ id, name }) => new Option(name, id)));
+  const requested = query.get("section");
+  if (sections.some(({ id }) => id === requested)) $("section").value = requested;
   $("section").addEventListener("change", () => changeSection(sections).catch(report));
   $("activation-link").href = route({ activate: selectedCourse.id });
   $("reset-link").href = route({ reset: selectedCourse.id });
-  show("teacher-accounts");
   await changeSection(sections);
 }
 $("reset-student").addEventListener("change", () => {
@@ -188,11 +203,11 @@ bind($("start"), "click", async () => {
   section.session_id = id;
 });
 bind($("end"), "click", async () => {
-  if (!selectedSection?.session_id || !window.confirm("ปิดการเช็กชื่อสำหรับคาบนี้?")) return;
+  if (!selectedSection?.session_id || !window.confirm("ปิดการเช็คชื่อสำหรับคาบนี้?")) return;
   const section = selectedSection;
   await teacher("end", section.session_id);
   section.session_id = null;
-  status("ปิดเช็กชื่อแล้ว");
+  status("ปิดเช็คชื่อแล้ว");
 });
 $("open-projector").addEventListener("click", () => {
   if (selectedSection?.session_id) window.open(route({ projector: selectedSection.session_id }), "_blank", "noopener");
@@ -210,11 +225,6 @@ bind($("add-student-form"), "submit", async (event) => {
   });
   form.reset();
   status(`เพิ่มนักศึกษาในตอน ${section.name} แล้ว`);
-  try {
-    await loadRoster(section);
-  } catch {
-    status(`บันทึกนักศึกษาในตอน ${section.name} แล้ว กรุณารีเฟรชเพื่อดูรายชื่อ`);
-  }
 });
 bind($("import-form"), "submit", async (event) => {
   const form = event.currentTarget;
@@ -241,7 +251,6 @@ bind($("import-form"), "submit", async (event) => {
   const result = await teacher("import", section.id, rows);
   form.reset();
   status(`บันทึกรายชื่อแล้ว ${result.imported} คน`);
-  await loadRoster(section);
 });
 
 async function showProjector(sessionId) {
@@ -262,7 +271,7 @@ async function showProjector(sessionId) {
     clearInterval(fallback);
     if (channel) void client.removeChannel(channel);
     qr.hidden = true;
-    $("qr-state").textContent = "ปิดเช็กชื่อแล้ว";
+    $("qr-state").textContent = "ปิดเช็คชื่อแล้ว";
   }
   async function refresh() {
     const version = ++requestVersion;
@@ -325,7 +334,7 @@ async function showProjector(sessionId) {
 bind($("activate-form"), "submit", async (event) => {
   await student("activate", { ...formData(event.currentTarget), course_id: query.get("activate") });
   $("activate-form").hidden = true;
-  status("เปิดใช้งานบัญชีแล้ว สแกน QR จากอาจารย์เมื่อเริ่มเช็กชื่อ");
+  status("เปิดใช้งานบัญชีแล้ว สแกน QR จากอาจารย์เมื่อเริ่มเช็คชื่อ");
 });
 bind($("reset-pin-form"), "submit", async (event) => {
   const form = event.currentTarget;
@@ -342,7 +351,7 @@ bind($("reset-pin-form"), "submit", async (event) => {
   }
   form.reset();
   form.hidden = true;
-  status("ตั้ง PIN ใหม่แล้ว สแกน QR แล้วใช้ PIN ใหม่เพื่อเช็กชื่อ");
+  status("ตั้ง PIN ใหม่แล้ว สแกน QR แล้วใช้ PIN ใหม่เพื่อเช็คชื่อ");
 });
 function getDevice() {
   try { return JSON.parse(localStorage.getItem(savedDeviceKey)); }
@@ -378,11 +387,12 @@ async function showCheckin(token) {
     }
     form.hidden = true;
     $("forgot-pin").hidden = true;
-    status(result.already_checked_in ? "คุณเช็กชื่อคาบนี้แล้ว" : "เช็กชื่อสำเร็จ");
+    status(result.already_checked_in ? "คุณเช็คชื่อคาบนี้แล้ว" : "เช็คชื่อสำเร็จ");
   });
 }
 async function showAttendanceReport() {
   show("attendance-report");
+  updateTeacherNav("report");
   const courses = await teacher("courses");
   const sections = courses.find(({ code }) => code === "702211")?.sections ?? [];
   const picker = $("report-section");
@@ -397,6 +407,7 @@ async function showAttendanceReport() {
   }
   let request = 0;
   async function load() {
+    updateTeacherNav("report", picker.value);
     const current = ++request;
     $("report-table").hidden = true;
     $("report-head").replaceChildren();
@@ -405,8 +416,8 @@ async function showAttendanceReport() {
     try {
       const { sessions, students } = await rpc("sa702211_section_report", { p_section: picker.value });
       if (request !== current) return;
-      $("report-message").textContent = !sessions.length ? "ตอนนี้ยังไม่มีคาบเช็กชื่อ"
-        : !students.length ? "ยังไม่มีนักศึกษาที่เช็กชื่อสำเร็จ" : "";
+      $("report-message").textContent = !sessions.length ? "ตอนนี้ยังไม่มีคาบเช็คชื่อ"
+        : !students.length ? "ยังไม่มีนักศึกษาที่เช็คชื่อสำเร็จ" : "";
       if (!sessions.length) return;
       function addHeading(label, date) {
         const th = document.createElement("th");
@@ -432,7 +443,7 @@ async function showAttendanceReport() {
           const cell = row.insertCell();
           const present = attended.has(session.number);
           cell.textContent = present ? "✓" : "—";
-          cell.setAttribute("aria-label", present ? "เช็กชื่อสำเร็จ" : "ไม่มีรายการเช็กชื่อ");
+          cell.setAttribute("aria-label", present ? "เช็คชื่อสำเร็จ" : "ไม่มีรายการเช็คชื่อ");
         }
         return row;
       }));
