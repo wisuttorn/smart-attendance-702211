@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Smart Attendance · 702211</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <a href="./">Smart Attendance</a>
+    <span>702211 Business Finance 1</span>
+  </header>
+  <main>
+    <p id="status" role="status" aria-live="polite"></p>
+    <section id="home" hidden class="card narrow">
+      <h1>ระบบเช็กชื่อ</h1>
+      <p>นักศึกษาสแกน QR จากหน้าจออาจารย์เพื่อเช็กชื่อ หรือเปิดลิงก์ลงทะเบียนที่อาจารย์ส่งให้</p>
+      <a class="button" href="?teacher">เข้าสู่ระบบอาจารย์</a>
+    </section>
+    <section id="login" hidden class="card narrow">
+      <h1>เข้าสู่ระบบอาจารย์</h1>
+      <form id="login-form">
+        <label>อีเมล <input name="email" type="email" autocomplete="username" required></label>
+        <label>รหัสผ่าน <input name="password" type="password" autocomplete="current-password" required></label>
+        <button>เข้าสู่ระบบ</button>
+      </form>
+    </section>
+    <section id="teacher" hidden>
+      <div class="card teacher-controls">
+        <h1>จัดการเช็กชื่อ</h1>
+        <div class="actions">
+          <label>กลุ่มเรียน <select id="section"></select></label>
+          <button id="start" type="button">เริ่มเช็กชื่อ</button>
+          <button id="open-projector" type="button" hidden>เปิดจอโปรเจกเตอร์</button>
+          <button id="end" class="secondary" type="button" hidden>ปิดเช็กชื่อ</button>
+          <button id="logout" class="secondary" type="button">ออกจากระบบ</button>
+        </div>
+      </div>
+      <div id="roster" class="card" hidden>
+        <h2>รายชื่อนักศึกษา</h2>
+        <p>บันทึกไฟล์จาก Excel เป็น CSV UTF-8 โดยใช้หัวคอลัมน์ <code>student_code,full_name</code> และตั้งรหัสนักศึกษาเป็นข้อความเพื่อเก็บเลขศูนย์นำหน้า</p>
+        <form id="import-form" class="actions">
+          <label>ไฟล์รายชื่อ <input type="file" name="file" accept=".csv,text/csv" required></label>
+          <button>อัปโหลดรายชื่อ</button>
+        </form>
+        <p><a id="activation-link">ลิงก์เปิดใช้งานบัญชีนักศึกษา</a></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>รหัสนักศึกษา</th><th>ชื่อ–นามสกุล</th><th>เปิดใช้งานบัญชี</th></tr></thead>
+            <tbody id="roster-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <section id="projector" class="projector" hidden>
+      <div class="card qr-panel">
+        <h1>สแกน QR เพื่อเช็กชื่อ</h1>
+        <canvas id="qr" aria-label="QR สำหรับเช็กชื่อ" role="img" hidden></canvas>
+        <p id="qr-state" aria-live="off"></p>
+      </div>
+      <div class="card">
+        <h2>เช็กชื่อสำเร็จ <span id="count">0</span></h2>
+        <ul id="success-list"></ul>
+      </div>
+    </section>
+    <section id="activate" class="card narrow" hidden>
+      <h1>เปิดใช้งานบัญชีนักศึกษา</h1>
+      <form id="activate-form">
+        <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
+        <label>Activation Code <input name="activation_code" minlength="16" maxlength="16" required></label>
+        <label>ตั้ง PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
+        <button>เปิดใช้งาน</button>
+      </form>
+    </section>
+    <section id="checkin" class="card narrow" hidden>
+      <h1>เช็กชื่อเข้าเรียน</h1>
+      <form id="checkin-form" hidden>
+        <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
+        <label>PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="current-password"></label>
+        <label class="checkbox"><input name="remember" type="checkbox"> จดจำอุปกรณ์นี้ 30 วัน</label>
+        <button>ยืนยันเช็กชื่อ</button>
+      </form>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
