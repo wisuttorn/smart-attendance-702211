@@ -124,6 +124,7 @@
         <label>กำหนด PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
         <button>เปิดใช้งาน</button>
       </form>
+      <button id="back-to-checkin" class="secondary" type="button" hidden>กลับไปหน้าเช็คชื่อ</button>
     </section>
     <section id="reset-pin" class="card narrow" hidden>
       <h1>ตั้ง PIN ใหม่</h1>
@@ -144,10 +145,13 @@
         <label class="checkbox"><input name="remember" type="checkbox"> จดจำอุปกรณ์นี้ 30 วัน</label>
         <button>ยืนยันเช็คชื่อ</button>
       </form>
-      <p id="forgot-pin" hidden><a id="forgot-pin-link">ลืม PIN</a></p>
+      <p id="checkin-help" hidden>
+        <a id="forgot-pin-link">ลืม PIN</a>
+        <span id="first-registration"> · <a id="first-registration-link">ลงทะเบียนครั้งแรก</a></span>
+      </p>
     </section>
   </main>
   <footer class="site-credit">โดย Dr. Wisuttorn Jitaree</footer>
-  <script type="module" src="./app.js?v=teacher-menu"></script>
+  <script type="module" src="./app.js?v=scan-registration"></script>
 </body>
 </html>

@@ -331,9 +331,31 @@ async function showProjector(sessionId) {
   await rotate();
 }
 
+let checkinCourseId;
+
+function returnToCheckin() {
+  $("activate").hidden = true;
+  show("checkin");
+  $("checkin-form").elements.pin.focus();
+}
+
+bind($("back-to-checkin"), "click", returnToCheckin);
 bind($("activate-form"), "submit", async (event) => {
-  await student("activate", { ...formData(event.currentTarget), course_id: query.get("activate") });
-  $("activate-form").hidden = true;
+  const form = event.currentTarget;
+  const data = formData(form);
+  await student("activate", { ...data, course_id: checkinCourseId ?? query.get("activate") });
+  form.reset();
+  if (checkinCourseId) {
+    const checkin = $("checkin-form");
+    checkin.elements.student_code.value = data.student_code.trim();
+    checkin.elements.pin.value = "";
+    checkin.elements.pin.required = true;
+    $("first-registration").hidden = true;
+    returnToCheckin();
+    status("ลงทะเบียนสำเร็จ ใช้ PIN ที่เพิ่งตั้งเพื่อเช็คชื่อ หากหมดเวลาให้สแกน QR ใหม่");
+    return;
+  }
+  form.hidden = true;
   status("เปิดใช้งานบัญชีแล้ว สแกน QR จากอาจารย์เมื่อเริ่มเช็คชื่อ");
 });
 bind($("reset-pin-form"), "submit", async (event) => {
@@ -361,8 +383,22 @@ async function showCheckin(token) {
   show("checkin");
   const ticket = await student("redeem", { token });
   $("forgot-pin-link").href = route({ reset: ticket.course_id });
-  show("forgot-pin");
+  const firstRegistration = $("first-registration-link");
+  firstRegistration.href = route({ activate: ticket.course_id });
+  show("checkin-help");
   const form = $("checkin-form");
+  firstRegistration.addEventListener("click", (event) => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    checkinCourseId = ticket.course_id;
+    $("checkin").hidden = true;
+    show("activate");
+    show("back-to-checkin");
+    const studentCode = $("activate-form").elements.student_code;
+    studentCode.value = form.elements.student_code.value.trim();
+    studentCode.focus();
+    status();
+  });
   const device = getDevice();
   if (device?.course === ticket.course_id) {
     form.elements.student_code.value = device.code;
@@ -386,7 +422,7 @@ async function showCheckin(token) {
       } catch { /* The attendance record is already saved. */ }
     }
     form.hidden = true;
-    $("forgot-pin").hidden = true;
+    $("checkin-help").hidden = true;
     status(result.already_checked_in ? "คุณเช็คชื่อคาบนี้แล้ว" : "เช็คชื่อสำเร็จ");
   });
 }
