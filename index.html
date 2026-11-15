@@ -50,7 +50,12 @@
         <details>
           <summary>ออก Activation Code ตามตอน</summary>
           <p>นักศึกษาที่ยังไม่เปิดใช้งานในตอนที่เลือกใช้เลขชุดเดียวกันได้ โค้ดหมดอายุใน 7 วัน การออกโค้ดใหม่จะแทนที่โค้ดเดิมของตอนนี้</p>
-          <p><a id="activation-link">ลิงก์เปิดใช้งานบัญชีนักศึกษา</a></p>
+          <details id="activation-qr-panel">
+            <summary>แสดง QR ลงทะเบียนครั้งแรก</summary>
+            <canvas id="activation-qr" role="img" aria-label="QR ลงทะเบียนครั้งแรก" hidden></canvas>
+            <p id="activation-qr-status" role="status"></p>
+            <p><a id="activation-link">ลิงก์เปิดใช้งานบัญชีนักศึกษา</a></p>
+          </details>
           <button id="issue-activation-section" type="button" disabled>ออก Activation Code สำหรับตอนที่เลือก</button>
           <p id="activation-results" hidden>
             ตอน <strong id="activation-section-name"></strong><br>
@@ -124,6 +129,7 @@
         <label>กำหนด PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
         <button>เปิดใช้งาน</button>
       </form>
+      <p id="after-activation" hidden><a id="after-activation-link" class="button" href="?checkin">ไปหน้าเช็คชื่อ</a></p>
       <button id="back-to-checkin" class="secondary" type="button" hidden>กลับไปหน้าเช็คชื่อ</button>
     </section>
     <section id="reset-pin" class="card narrow" hidden>
@@ -139,6 +145,7 @@
     </section>
     <section id="checkin" class="card narrow" hidden>
       <h1>เช็คชื่อเข้าเรียน</h1>
+      <p id="scan-attendance-instructions" hidden>สแกน QR เช็คชื่อที่แสดงบนจออาจารย์ แล้วใช้ PIN ของคุณเพื่อเช็คชื่อเข้าเรียน</p>
       <form id="checkin-form" hidden>
         <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
         <label>PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="current-password"></label>
@@ -152,6 +159,6 @@
     </section>
   </main>
   <footer class="site-credit">โดย Dr. Wisuttorn Jitaree</footer>
-  <script type="module" src="./app.js?v=scan-registration"></script>
+  <script type="module" src="./app.js?v=registration-qr"></script>
 </body>
 </html>

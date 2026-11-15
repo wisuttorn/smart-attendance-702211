@@ -131,6 +131,7 @@ async function changeSection(sections) {
   $("reset-code").textContent = "";
   $("issue-activation-section").disabled = false;
   renderActivationCodes(selectedSection);
+  updateActivationQr();
   await loadResetOptions(selectedSection);
 }
 
@@ -152,6 +153,7 @@ async function showTeacher() {
   const requested = query.get("section");
   if (sections.some(({ id }) => id === requested)) $("section").value = requested;
   $("section").addEventListener("change", () => changeSection(sections).catch(report));
+  $("activation-qr-panel").addEventListener("toggle", updateActivationQr);
   $("activation-link").href = route({ activate: selectedCourse.id });
   $("reset-link").href = route({ reset: selectedCourse.id });
   await changeSection(sections);
@@ -331,7 +333,55 @@ async function showProjector(sessionId) {
   await rotate();
 }
 
+let signupQrTimer;
+let signupQrRequest = 0;
+function updateActivationQr() {
+  clearTimeout(signupQrTimer);
+  const request = ++signupQrRequest;
+  const panel = $("activation-qr-panel");
+  const canvas = $("activation-qr");
+  const notice = $("activation-qr-status");
+  canvas.hidden = true;
+  notice.textContent = "";
+  if (!panel.open || !selectedSection || !selectedCourse) return;
+  const section = selectedSection;
+  const url = route({ activate: selectedCourse.id });
+  void (async () => {
+    let refreshIn;
+    let activeQr = false;
+    if (section.session_id) {
+      try {
+        const sent = performance.now();
+        const result = await teacher("qr", section.session_id);
+        const deadline = sent + Date.parse(result.expires_at) - Date.parse(result.server_now);
+        refreshIn = Math.max(200, deadline - performance.now());
+        if (deadline > performance.now()) {
+          url.hash = new URLSearchParams({ checkin: result.token });
+          activeQr = true;
+        }
+      } catch {
+        refreshIn = 5000;
+      }
+    }
+    if (request !== signupQrRequest) return;
+    try {
+      await QRCode.toCanvas(canvas, url.href, { width: 432, margin: 3, errorCorrectionLevel: "M" });
+      if (request !== signupQrRequest) return;
+      canvas.hidden = false;
+      notice.textContent = activeQr
+        ? "สแกนเพื่อลงทะเบียนและเช็คชื่อคาบนี้ QR เปลี่ยนทุก 30 วินาที"
+        : "สแกนเพื่อลงทะเบียน เมื่อเปิดคาบให้สแกน QR เช็คชื่อจากจออาจารย์";
+    } catch {
+      if (request === signupQrRequest) notice.textContent = "แสดง QR ไม่ได้ กรุณาใช้ลิงก์เปิดใช้งาน";
+    }
+    if (request === signupQrRequest && refreshIn !== undefined) {
+      signupQrTimer = setTimeout(updateActivationQr, refreshIn);
+    }
+  })();
+}
+
 let checkinCourseId;
+let registrationTicket;
 
 function returnToCheckin() {
   $("activate").hidden = true;
@@ -340,9 +390,16 @@ function returnToCheckin() {
 }
 
 bind($("back-to-checkin"), "click", returnToCheckin);
+$("after-activation-link").addEventListener("click", (event) => {
+  if (!checkinCourseId || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  returnToCheckin();
+  status("ใช้ PIN ที่เพิ่งตั้งเพื่อเช็คชื่อ หากหมดเวลาให้สแกน QR ใหม่");
+});
 bind($("activate-form"), "submit", async (event) => {
   const form = event.currentTarget;
   const data = formData(form);
+  await registrationTicket;
   await student("activate", { ...data, course_id: checkinCourseId ?? query.get("activate") });
   form.reset();
   if (checkinCourseId) {
@@ -351,12 +408,11 @@ bind($("activate-form"), "submit", async (event) => {
     checkin.elements.pin.value = "";
     checkin.elements.pin.required = true;
     $("first-registration").hidden = true;
-    returnToCheckin();
-    status("ลงทะเบียนสำเร็จ ใช้ PIN ที่เพิ่งตั้งเพื่อเช็คชื่อ หากหมดเวลาให้สแกน QR ใหม่");
-    return;
+    $("back-to-checkin").hidden = true;
   }
   form.hidden = true;
-  status("เปิดใช้งานบัญชีแล้ว สแกน QR จากอาจารย์เมื่อเริ่มเช็คชื่อ");
+  show("after-activation");
+  status("ลงทะเบียนสำเร็จ ใช้ PIN ที่เพิ่งตั้งเพื่อเช็คชื่อ");
 });
 bind($("reset-pin-form"), "submit", async (event) => {
   const form = event.currentTarget;
@@ -381,7 +437,10 @@ function getDevice() {
 }
 async function showCheckin(token) {
   show("checkin");
-  const ticket = await student("redeem", { token });
+  prepareCheckin(await student("redeem", { token }));
+}
+
+function prepareCheckin(ticket) {
   $("forgot-pin-link").href = route({ reset: ticket.course_id });
   const firstRegistration = $("first-registration-link");
   firstRegistration.href = route({ activate: ticket.course_id });
@@ -496,14 +555,28 @@ async function showAttendanceReport() {
 }
 
 async function main() {
-  if (fragment.has("checkin")) {
+  if (query.has("activate")) {
+    show("activate");
+    if (fragment.has("checkin")) {
+      const token = fragment.get("checkin");
+      history.replaceState(null, "", route({ activate: query.get("activate") }));
+      registrationTicket = student("redeem", { token }).then((ticket) => {
+        if (ticket.course_id !== query.get("activate")) return;
+        prepareCheckin(ticket);
+        checkinCourseId = ticket.course_id;
+      }).catch(() => {
+        // The registration link also works if the class QR has expired.
+      });
+    }
+  } else if (fragment.has("checkin")) {
     const token = fragment.get("checkin");
     history.replaceState(null, "", page);
     await showCheckin(token);
+  } else if (query.has("checkin")) {
+    show("checkin");
+    show("scan-attendance-instructions");
   } else if (query.has("reset")) {
     show("reset-pin");
-  } else if (query.has("activate")) {
-    show("activate");
   } else if (query.has("teacher") || query.has("projector")) {
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
