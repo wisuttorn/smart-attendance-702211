@@ -40,6 +40,14 @@
       </div>
       <div id="roster" class="card" hidden>
         <h2>รายชื่อนักศึกษา</h2>
+        <details>
+          <summary>เพิ่มนักศึกษาทีละคน</summary>
+          <form id="add-student-form" class="actions">
+            <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
+            <label>ชื่อ–นามสกุล <input name="full_name" maxlength="160" required></label>
+            <button>เพิ่มนักศึกษา</button>
+          </form>
+        </details>
         <p>บันทึกไฟล์จาก Excel เป็น CSV UTF-8 โดยใช้หัวคอลัมน์ <code>student_code,full_name</code> และตั้งรหัสนักศึกษาเป็นข้อความเพื่อเก็บเลขศูนย์นำหน้า</p>
         <form id="import-form" class="actions">
           <label>ไฟล์รายชื่อ <input type="file" name="file" accept=".csv,text/csv" required></label>
@@ -84,6 +92,6 @@
       </form>
     </section>
   </main>
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=roster-add"></script>
 </body>
 </html>

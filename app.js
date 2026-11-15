@@ -13,6 +13,7 @@ let selectedCourse;
 let selectedSection;
 
 const errors = {
+  STUDENT_ALREADY_EXISTS: "รหัสนักศึกษานี้มีอยู่ในรายวิชาแล้ว",
   FORBIDDEN: "บัญชีนี้ไม่มีสิทธิ์เข้าถึงข้อมูล",
   INVALID_ACTIVATION: "รหัสนักศึกษาหรือ Activation Code ไม่ถูกต้องหรือหมดอายุ",
   INVALID_CHECKIN: "รหัสนักศึกษา, PIN หรือกลุ่มเรียนไม่ถูกต้อง",
@@ -150,6 +151,25 @@ bind($("end"), "click", async () => {
 });
 $("open-projector").addEventListener("click", () => {
   if (selectedSection?.session_id) window.open(route({ projector: selectedSection.session_id }), "_blank", "noopener");
+});
+bind($("add-student-form"), "submit", async (event) => {
+  const form = event.currentTarget;
+  const section = selectedSection;
+  if (!section) return;
+  const { student_code, full_name } = formData(form);
+  if (!student_code.trim() || !full_name.trim()) throw new Error("INVALID_ROSTER_ROW");
+  await rpc("sa702211_add_student", {
+    p_section: section.id,
+    p_student_code: student_code,
+    p_full_name: full_name,
+  });
+  form.reset();
+  status(`เพิ่มนักศึกษาในกลุ่ม ${section.name} แล้ว`);
+  try {
+    await loadRoster(section);
+  } catch {
+    status(`บันทึกนักศึกษาในกลุ่ม ${section.name} แล้ว กรุณารีเฟรชเพื่อดูรายชื่อ`);
+  }
 });
 bind($("import-form"), "submit", async (event) => {
   const form = event.currentTarget;
