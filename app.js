@@ -58,6 +58,7 @@ function bind(target, event, callback) {
     } finally {
       button.disabled = false;
       if (target === $("start") || target === $("end")) updateSessionControls();
+      if (target === $("teacher-reset-form")) $("issue-reset").disabled = !$("reset-student").value;
     }
   });
 }
@@ -92,41 +93,17 @@ function updateSessionControls() {
 async function loadRoster(section) {
   const rows = await teacher("roster", section.id);
   if (section !== selectedSection) return;
+  const prior = $("reset-student").value;
+  $("reset-student").replaceChildren(new Option("เลือกนักศึกษา", ""), ...rows
+    .filter(({ activated }) => activated)
+    .map(({ id, student_code, full_name }) => new Option(`${student_code} · ${full_name}`, id)));
+  $("reset-student").value = [...$("reset-student").options].some(({ value }) => value === prior) ? prior : "";
+  $("issue-reset").disabled = !$("reset-student").value;
   $("roster-rows").replaceChildren(...rows.map((studentRow) => {
     const row = document.createElement("tr");
     row.insertCell().textContent = studentRow.student_code;
     row.insertCell().textContent = studentRow.full_name;
-    const cell = row.insertCell();
-    if (studentRow.activated) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "secondary";
-      button.textContent = "ออกโค้ดรีเซ็ต PIN";
-      cell.append(button);
-      bind(button, "click", async () => {
-        const result = await rpc("sa702211_issue_pin_reset", { p_student: studentRow.id });
-        const code = document.createElement("code");
-        code.textContent = result.code;
-        const link = document.createElement("a");
-        link.href = route({ reset: selectedCourse.id });
-        link.textContent = "ลิงก์ตั้ง PIN ใหม่";
-        const details = document.createElement("div");
-        details.append(code, document.createElement("br"), link);
-        cell.replaceChildren(details);
-        status("ออกรหัสรีเซ็ตแล้ว กรุณาส่งรหัสและลิงก์ให้นักศึกษาคนนี้โดยตรง");
-      });
-    } else {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = "ออก Activation Code";
-      cell.append(button);
-      bind(button, "click", async () => {
-        const result = await teacher("issue_activation", studentRow.id);
-        const code = document.createElement("code");
-        code.textContent = result.code;
-        cell.replaceChildren(code);
-      });
-    }
+    row.insertCell().textContent = studentRow.activated ? "เปิดใช้งานแล้ว" : "ยังไม่เปิดใช้งาน";
     return row;
   }));
 }
@@ -135,6 +112,10 @@ async function changeSection(sections) {
   updateSessionControls();
   $("roster").hidden = !selectedSection;
   $("roster-rows").replaceChildren();
+  $("reset-student").replaceChildren(new Option("เลือกนักศึกษา", ""));
+  $("issue-reset").disabled = true;
+  $("teacher-reset-result").hidden = true;
+  $("reset-code").textContent = "";
   if (selectedSection) await loadRoster(selectedSection);
 }
 async function showTeacher() {
@@ -151,8 +132,41 @@ async function showTeacher() {
   $("section").replaceChildren(...sections.map((section) => new Option(section.name, section.id)));
   $("section").addEventListener("change", () => changeSection(sections).catch(report));
   $("activation-link").href = route({ activate: selectedCourse.id });
+  $("reset-link").href = route({ reset: selectedCourse.id });
+  show("teacher-accounts");
   await changeSection(sections);
 }
+$("reset-student").addEventListener("change", () => {
+  $("issue-reset").disabled = !$("reset-student").value;
+  $("teacher-reset-result").hidden = true;
+  $("reset-code").textContent = "";
+});
+bind($("teacher-reset-form"), "submit", async () => {
+  const studentId = $("reset-student").value;
+  const recipient = $("reset-student").selectedOptions[0]?.text;
+  const section = selectedSection;
+  if (!studentId) return;
+  const result = await rpc("sa702211_issue_pin_reset", { p_student: studentId });
+  if (section !== selectedSection || studentId !== $("reset-student").value) {
+    status("ออกโค้ดแล้ว แต่มีการเปลี่ยนตัวเลือก กรุณาเลือกนักศึกษาคนเดิมและออกโค้ดใหม่");
+    return;
+  }
+  $("reset-recipient").textContent = recipient;
+  $("reset-code").textContent = result.code;
+  show("teacher-reset-result");
+  status("ส่งโค้ดรีเซ็ตและลิงก์ให้นักศึกษาที่เลือกโดยตรง");
+});
+bind($("issue-activation-batch"), "click", async () => {
+  if (!selectedCourse || !window.confirm("ออกโค้ดพร้อมกันทุกกลุ่ม? โค้ดเดิมที่ยังไม่ได้ใช้จะใช้ไม่ได้")) return;
+  const rows = await rpc("sa702211_issue_activation_batch", { p_course: selectedCourse.id });
+  $("activation-rows").replaceChildren(...rows.map(({ section, student_code, full_name, code }) => {
+    const row = document.createElement("tr");
+    for (const value of [section, student_code, full_name, code]) row.insertCell().textContent = value;
+    return row;
+  }));
+  $("activation-results").hidden = rows.length === 0;
+  status(rows.length ? `ออก Activation Code แล้ว ${rows.length} คน ส่งโค้ดแต่ละรายการให้เจ้าของโดยตรง` : "นักศึกษาทุกคนเปิดใช้งานแล้ว");
+});
 bind($("start"), "click", async () => {
   if (!selectedSection) return;
   const section = selectedSection;

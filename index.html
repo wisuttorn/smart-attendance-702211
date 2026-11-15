@@ -38,6 +38,35 @@
           <button id="logout" class="secondary" type="button">ออกจากระบบ</button>
         </div>
       </div>
+      <div id="teacher-accounts" class="card" hidden>
+        <h2>บัญชีนักศึกษา</h2>
+        <details>
+          <summary>ออก Activation Code ทั้งรายวิชา</summary>
+          <p>ออกโค้ดทุกกลุ่มพร้อมกันสำหรับนักศึกษาที่ยังไม่เปิดใช้งาน โค้ดเดิมที่ยังไม่ได้ใช้จะถูกแทนที่</p>
+          <p><a id="activation-link">ลิงก์เปิดใช้งานบัญชีนักศึกษา</a></p>
+          <button id="issue-activation-batch" type="button">ออก Activation Code ทุกกลุ่ม</button>
+          <div id="activation-results" class="table-wrap" hidden>
+            <table>
+              <thead><tr><th>กลุ่ม</th><th>รหัสนักศึกษา</th><th>ชื่อ–นามสกุล</th><th>Activation Code</th></tr></thead>
+              <tbody id="activation-rows"></tbody>
+            </table>
+          </div>
+        </details>
+        <details>
+          <summary>ออกโค้ดใหม่เมื่อนักศึกษาลืม PIN</summary>
+          <form id="teacher-reset-form" class="actions">
+            <label>นักศึกษาที่เปิดใช้งานแล้วในกลุ่มที่เลือก
+              <select id="reset-student" name="student" required><option value="">เลือกนักศึกษา</option></select>
+            </label>
+            <button id="issue-reset" type="submit" disabled>ออกโค้ดรีเซ็ต PIN</button>
+          </form>
+          <p id="teacher-reset-result" hidden>
+            <strong id="reset-recipient"></strong><br>
+            โค้ดรีเซ็ต <code id="reset-code"></code><br>
+            <a id="reset-link">ลิงก์ตั้ง PIN ใหม่</a>
+          </p>
+        </details>
+      </div>
       <div id="roster" class="card" hidden>
         <h2>รายชื่อนักศึกษา</h2>
         <details>
@@ -53,7 +82,6 @@
           <label>ไฟล์รายชื่อ <input type="file" name="file" accept=".csv,text/csv" required></label>
           <button>อัปโหลดรายชื่อ</button>
         </form>
-        <p><a id="activation-link">ลิงก์เปิดใช้งานบัญชีนักศึกษา</a></p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>รหัสนักศึกษา</th><th>ชื่อ–นามสกุล</th><th>เปิดใช้งานบัญชี</th></tr></thead>
@@ -78,7 +106,7 @@
       <form id="activate-form">
         <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
         <label>Activation Code <input name="activation_code" minlength="16" maxlength="16" required></label>
-        <label>ตั้ง PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
+        <label>กำหนด PIN 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
         <button>เปิดใช้งาน</button>
       </form>
     </section>
@@ -88,7 +116,7 @@
       <form id="reset-pin-form">
         <label>รหัสนักศึกษา <input name="student_code" maxlength="40" required></label>
         <label>รหัสรีเซ็ต <input name="reset_code" minlength="16" maxlength="16" autocomplete="one-time-code" required></label>
-        <label>PIN ใหม่ 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
+        <label>กำหนด PIN ใหม่ 6 หลัก <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
         <label>ยืนยัน PIN ใหม่ <input name="confirm_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="new-password" required></label>
         <button>บันทึก PIN ใหม่</button>
       </form>
@@ -104,6 +132,6 @@
       <p id="forgot-pin" hidden><a id="forgot-pin-link">ลืม PIN</a></p>
     </section>
   </main>
-  <script type="module" src="./app.js?v=pin-reset"></script>
+  <script type="module" src="./app.js?v=account-tools"></script>
 </body>
 </html>
