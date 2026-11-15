@@ -17,6 +17,7 @@ const issuedCodesBySection = new Map();
 const thaiDateTime = new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
 
 const errors = {
+  ACTIVATION_THROTTLED: "กรอก Activation Code ผิดหลายครั้ง กรุณารอสักครู่ก่อนลองใหม่",
   INVALID_RESET: "รหัสนักศึกษาหรือรหัสรีเซ็ตไม่ถูกต้อง หรือรหัสหมดอายุแล้ว",
   STUDENT_ALREADY_EXISTS: "รหัสนักศึกษานี้มีอยู่ในรายวิชาแล้ว",
   FORBIDDEN: "บัญชีนี้ไม่มีสิทธิ์เข้าถึงข้อมูล",
